@@ -46,7 +46,7 @@ _deps = [
     "bitsandbytes==0.41.2.post2",
     "black==23.1.0",
     "datasets==2.14.6",
-    "deepspeed==0.12.2",
+    "deepspeed>=0.14.4",
     "einops>=0.6.1",
     "evaluate==0.4.0",
     "flake8>=6.0.0",
@@ -66,9 +66,9 @@ _deps = [
     "scipy",
     "tensorboard",
     "torch==2.1.2",
-    "transformers==4.42.4",
-    "trl==0.9.6",
-    "jinja2>=3.0.0",
+    "transformers==4.45.2",
+    "trl>=0.9.6",
+    "jinja2>=3.1.0",
     "tqdm>=4.64.1",
 ]
 
@@ -78,7 +78,13 @@ _deps = [
 # packaging: "packaging"
 #
 # some of the values are versioned whereas others aren't.
-deps = {b: a for a, b in (re.findall(r"^(([^!=<>~ \[\]]+)(?:\[[^\]]+\])?(?:[!=<>~ ].*)?$)", x)[0] for x in _deps)}
+deps = {
+    b: a
+    for a, b in (
+        re.findall(r"^(([^!=<>~ \[\]]+)(?:\[[^\]]+\])?(?:[!=<>~ ].*)?$)", x)[0]
+        for x in _deps
+    )
+}
 
 
 def deps_list(*pkgs):

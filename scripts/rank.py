@@ -5,7 +5,10 @@ import argparse
 import llm_blender
 import os
 import numpy as np
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModel
+import torch
+from internlm_rank import rank_wrapper
+
 
 def parse_arguments():
     """Parse command line arguments."""
@@ -13,19 +16,39 @@ def parse_arguments():
     parser.add_argument(
         "--model", type=str, default="mistralai/Mistral-7B-Instruct-v0.2"
     )
-    parser.add_argument('--output_dir', type=str, default='generated/iter1')
+    parser.add_argument("--output_dir", type=str, default="generated/iter1")
     parser.add_argument("--numgpu", type=int, default=8)
-    parser.add_argument('--prompts', type=str, default='UCLA-AGI/data-mistral-7b-instruct-sppo-iter1')
-    parser.add_argument('--data_frac', type=int, default=0)
-    parser.add_argument('--frac_len', type=int, default=0)
+    parser.add_argument(
+        "--prompts", type=str, default="UCLA-AGI/data-mistral-7b-instruct-sppo-iter1"
+    )
+    parser.add_argument("--data_frac", type=int, default=0)
+    parser.add_argument("--frac_len", type=int, default=0)
     parser.add_argument("--gpu", type=int, default=0)  # local rank
     parser.add_argument("--pairs", type=int, default=5)
     return parser.parse_args()
 
+
 def ranking(args, prompts, candidates):
-    blender = llm_blender.Blender()
-    blender.loadranker("llm-blender/PairRM")
-    ranks = blender.rank(prompts, candidates, return_scores=True, batch_size=1)
+    # Load the model and tokenizer
+    model = AutoModel.from_pretrained(
+        "internlm/internlm2-7b-reward",
+        device_map="cuda",
+        torch_dtype=torch.float16,
+        trust_remote_code=True,
+    )
+    tokenizer = AutoTokenizer.from_pretrained(
+        "internlm/internlm2-7b-reward", trust_remote_code=True
+    )
+
+    # Use the rank_wrapper function instead of blender.rank
+    ranks = rank_wrapper(
+        inputs=prompts,
+        candidates=candidates,
+        model=model,
+        tokenizer=tokenizer,
+        return_scores=True,
+        batch_size=1,
+    )
     np.save(f"ranking/{args.output_dir}/{args.gpu}_{args.data_frac}.npy", ranks)
 
 
@@ -33,9 +56,9 @@ def split_prompts(prompts, frac_len, data_frac):
     if frac_len > 0:
         split_len = frac_len
         if split_len * (data_frac + 1) > len(prompts):
-            return prompts[split_len * data_frac:]
+            return prompts[split_len * data_frac :]
         else:
-            return prompts[split_len * data_frac: split_len * (data_frac + 1)]
+            return prompts[split_len * data_frac : split_len * (data_frac + 1)]
     else:
         return prompts[:]
 
@@ -43,9 +66,9 @@ def split_prompts(prompts, frac_len, data_frac):
 def apply_template(text, tokenizer):
     return tokenizer.apply_chat_template(
         [{"role": "user", "content": text}, {"role": "assistant", "content": "None"}],
-        tokenize=False, add_generate_prompt=True
+        tokenize=False,
+        add_generate_prompt=True,
     ).split("None")[0]
-
 
 
 def main(args):
@@ -58,11 +81,15 @@ def main(args):
     elif "gemma-2" in args.model.lower():
         tokenizer = AutoTokenizer.from_pretrained("google/gemma-2-9b-it")
     else:
-        raise ValueError("Must contain model name in the dataset name. Supported models: Mistral/Llama-3")
+        raise ValueError(
+            "Must contain model name in the dataset name. Supported models: Mistral/Llama-3"
+        )
 
     tokenizer.pad_token = tokenizer.eos_token
 
-    prompts_all = [apply_template(data[idx]["prompt"], tokenizer) for idx in range(len(data))]
+    prompts_all = [
+        apply_template(data[idx]["prompt"], tokenizer) for idx in range(len(data))
+    ]
     print(prompts_all[0])
     pairs = args.pairs
     all_generated = []
@@ -75,7 +102,7 @@ def main(args):
 
     candidates_texts = list(zip(*all_generated))
     assert len(data) == len(candidates_texts)
-    print(f'Length of data: {len(data)}')
+    print(f"Length of data: {len(data)}")
 
     data_frac = args.data_frac
     os.makedirs(f"ranking/{args.output_dir}", exist_ok=True)
@@ -85,6 +112,7 @@ def main(args):
     candidates_texts = split_prompts(candidates_texts, frac_len, data_frac)
 
     ranking(args, prompts_all, candidates_texts)
+
 
 if __name__ == "__main__":
     args = parse_arguments()
