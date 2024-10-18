@@ -3,7 +3,7 @@ set -x
 
 export CUDA_VISIBLE_DEVICES="0,1,2,3"
 AVAILABLE_GPUS=(0 1 2 3)
-HF_ORG=UCLA-AGI
+HF_ORG=arcee-train
 
 MODEL="mistralai/Mistral-7B-Instruct-v0.2"
 OUTDIR="data-mistral-7b-instruct-sppo-iter1"

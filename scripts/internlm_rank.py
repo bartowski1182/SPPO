@@ -1,5 +1,6 @@
 import numpy as np
 from tqdm import tqdm
+from typing import List
 
 
 def rank_wrapper(
@@ -62,6 +63,9 @@ def rank_wrapper(
     ):
         batch_chats = all_chats[i : i + batch_size]
         batch_scores = model.get_scores(tokenizer, batch_chats)
+        # Ensure batch_scores is always a list
+        if isinstance(batch_scores, float):
+            batch_scores = [batch_scores]
         scores.extend(batch_scores)
 
     # Reshape scores into a 2D list [n_inputs x n_candidates]

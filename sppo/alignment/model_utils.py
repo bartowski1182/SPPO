@@ -26,8 +26,8 @@ from transformers.trainer_utils import get_last_checkpoint
 
 from accelerate import Accelerator
 from huggingface_hub import list_repo_files
-from huggingface_hub.utils._errors import RepositoryNotFoundError
-from huggingface_hub.utils._validators import HFValidationError
+from huggingface_hub.utils import RepositoryNotFoundError
+from huggingface_hub.utils import HFValidationError
 from peft import LoraConfig, PeftConfig
 
 from .configs import DataArguments, SPPOConfig, ModelArguments, SFTConfig
@@ -66,7 +66,9 @@ def get_quantization_config(model_args: ModelArguments) -> BitsAndBytesConfig | 
     return quantization_config
 
 
-def get_tokenizer(model_args: ModelArguments, data_args: DataArguments) -> PreTrainedTokenizer:
+def get_tokenizer(
+    model_args: ModelArguments, data_args: DataArguments
+) -> PreTrainedTokenizer:
     """Get the tokenizer for the model."""
     tokenizer = AutoTokenizer.from_pretrained(
         model_args.model_name_or_path,
@@ -114,7 +116,9 @@ def is_adapter_model(model_name_or_path: str, revision: str = "main") -> bool:
     except (HFValidationError, RepositoryNotFoundError):
         # If not, check local repo
         repo_files = os.listdir(model_name_or_path)
-    return "adapter_model.safetensors" in repo_files or "adapter_model.bin" in repo_files
+    return (
+        "adapter_model.safetensors" in repo_files or "adapter_model.bin" in repo_files
+    )
 
 
 def get_checkpoint(training_args: SFTConfig | SPPOConfig) -> Path | None:
